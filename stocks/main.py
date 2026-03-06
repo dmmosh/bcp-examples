@@ -8,7 +8,7 @@ from header import *
 
 bit_size = 64
 max_value = pow(2,bit_size)-1
-n = 10
+n = 100000
 def bit_nums(arr):
     out = [0]*(bit_size+1)
     for a in arr:
@@ -18,7 +18,7 @@ def bit_nums(arr):
 def cast_void(arr:list)-> c_void_p :
     return (c_void_p * len(arr))(*arr)
 
-arr = [random.randint(0) for _ in range(n)]
+arr = [random.randint(0,max_value) for _ in range(n)]
 arr.sort(reverse=True)
 arr_in = (c_uint64 * n)(*arr)
 bit_nums_arr = (c_uint64*(bit_size+1))(*(bit_nums(arr)))
