@@ -13,8 +13,21 @@ except OSError as e:
     print(f"Error loading library: {e}")
     exit()
 
+class bcp_obj_bytes(Structure): # struct for bcp obj type
+    _fields_ = [
+        ("obj", c_void_p),
+        ("size", c_uint64)
+        
+]
+
 bcp.bcp_compress.restype = c_void_p
 bcp.bcp_compress.argtypes = [c_void_p,
+                             POINTER(c_uint64),
+                             c_uint64,
+                             c_size_t
+                             ]
+bcp.bcp_compress_bytes.restype = bcp_obj_bytes
+bcp.bcp_compress_bytes.argtypes = [c_void_p,
                              POINTER(c_uint64),
                              c_uint64,
                              c_size_t
