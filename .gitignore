@@ -1,2 +1,4 @@
 __pycache__
 stocks/__pycache__
+stocks/.buildozer
+venv
