@@ -32,9 +32,9 @@ def set_bluetooth_discovery(state=True):
         
 
 
-byte = 1
+byte = 4
 max_value = pow(256,byte)-1
-n = 10
+n = 100000
 
 type_arr = None
 match(byte):
@@ -60,9 +60,12 @@ out = obj.arr()
 
 obj.print_values()
 
-# CREATE SERVER AND MAKE IT DISCOVERABLE 
+#print(type(obj.obj.obj))
+#print(obj.obj.size)
+
 
         
+# CREATE SERVER AND MAKE IT DISCOVERABLE 
 set_bluetooth_discovery(True)
 
 # 2. Create the RFCOMM socket
@@ -78,19 +81,53 @@ try:
     
     client_sock, client_info = server_sock.accept()
     print(f"Connection established with {client_info}")
+    
+    
+    # buffer = (c_ubyte * obj.obj.size).from_address(obj.obj.obj) # converts to a unsigned byte array view
+    # view = memoryview(buffer) # creates a memoryview (instead of a bytes object)
+    #print(len(view)) confirmation
 
-    # 3. Simple Echo Loop
-    while True:
-        data = client_sock.recv(1024)
-        print(len(data))
-        
-        if not data:
-            print(f"Connection closed by client {client_info}")
+    
+    
+    buffer = (c_ubyte * (obj.obj.size)).from_address(obj.obj.obj) # converts to a unsigned byte array view
+    view = memoryview(buffer) # creates a memoryview (instead of a bytes object)
+    
+    chunk_size = 5096 # chunks, n of bytes
+    #n_chunks = obj.obj.size // chunk_size + (obj.obj.size % chunk_size != 0)
+    print(obj.obj.size)
+    # first request will be the n of chunks
+    client_sock.send(obj.obj.size.to_bytes(4,byteorder='big')) 
+    #print(obj.obj.size)
+    
+    i=0
+    while(i<obj.obj.size):
+        try:
+            # sendall() is still the safest bet for ensuring delivery
+            i+= client_sock.send(view[i : i + chunk_size])
+            
+        except socket.error as e:
+            print(f"Send failed: {e}")
             break
+   
+    
+    client_sock.shutdown(socket.SHUT_WR)
+    
+    
+    # 3. Simple Echo Loop
+    #while True:
+        #  data = client_sock.recv(1024)
+        # # print(len(data))
+        
+        # if not data:
+        #     print(f"Connection closed by client {client_info}")
+        #     break
         
         
-        print(f"Received: {data.decode('ascii')}")
-        client_sock.send(b"ACK: " + data)
+        #print(f"Received: {data.decode('ascii')}")
+        
+        
+        
+        #client_sock.send(b"ACK: " + data)
 
 except Exception as e:
     print(f"Server Error: {e}")
