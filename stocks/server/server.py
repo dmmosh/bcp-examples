@@ -2,7 +2,6 @@ import os
 import sys
 import numpy as np
 from math import log2
-from gi.repository import GLib
 import socket
 import subprocess
 import yfinance as yf
