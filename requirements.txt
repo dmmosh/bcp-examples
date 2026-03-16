@@ -1,5 +1,7 @@
 appdirs==1.4.4
 beautifulsoup4==4.14.3
+bitarray==3.8.0
+bitstring==4.4.0
 bluezero==0.9.1
 build==1.4.0
 buildozer @ git+https://github.com/kivy/buildozer.git@91ce81bb9576b019a3de1b20653e30698beb4c00
@@ -43,6 +45,7 @@ setuptools==82.0.1
 sh==1.14.3
 six==1.17.0
 soupsieve==2.8.3
+tibs==0.5.7
 toml==0.10.2
 typing_extensions==4.15.0
 urllib3==2.6.3
