@@ -5,8 +5,15 @@ from math import log2
 from gi.repository import GLib
 import socket
 import subprocess
+import yfinance as yf
+import pandas as pd
 
-import uuid
+'''
+bluetooth stock prices examplee
+make for short time spans, so daytrader
+send sorted data 
+'''
+
 # Add the parent directory to the system path
 # Calculate the path two directories up from the current script's location
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -29,12 +36,62 @@ def set_bluetooth_discovery(state=True):
         print(f"Bluetooth discoverability set to: {mode}")
     except subprocess.CalledProcessError as e:
         print(f"Failed to set Bluetooth mode: {e}")
-        
 
+
+def relative_volatility_index(df, period=14):
+
+    change = df.diff()
+
+    # rolling standard deviation
+    std = df.rolling(period).std()
+
+    up_vol = std.where(change > 0, 0)
+    down_vol = std.where(change <= 0, 0)
+
+    up_vol = up_vol.rolling(period).mean()
+    down_vol = down_vol.rolling(period).mean()
+
+    rvi = 100 * up_vol / (up_vol + down_vol)
+
+    return rvi
+
+snp500 = pd.read_excel('https://www.ssga.com/us/en/intermediary/etfs/library-content/products/fund-data/etfs/us/holdings-daily-us-en-spy.xlsx', 
+                        engine='openpyxl', 
+                        skiprows=4,
+                        usecols=['Ticker']
+                        ).dropna()['Ticker'].tolist()
+
+data = yf.download(tickers=snp500,
+                     period='1d',
+                     interval='1m',
+                     threads=40
+                     ).tail(27) # only the last 15 periods iterested in 
+
+
+'''
+gets the relative volatility index (RVI) with 14 periods
+'''
+#close = pd.concat({t: data[t]["Close"] for t in data}, axis=1)
+
+# RVI , gets the most recent, drops the NaN
+rvi = relative_volatility_index(data['Close']).tail(1).iloc[-1] # turns into series
+rvi = rvi.dropna().sort_values(ascending=False)
+with pd.option_context('display.float_format', '{:.20f}'.format):
+    print(rvi)
+
+
+#volatility = ((stocks['High'] - stocks['Close'])/stocks['Price']).T.dropna()
+#print('NUM OF NANS:', volatility.isna().sum())
+#print(volatility)
+
+# with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+#     print(volatility)
+#print(type(obj.obj.obj))
+#print(obj.obj.size)
 
 byte = 4
 max_value = pow(256,byte)-1
-n = 100000
+n = 10000
 
 type_arr = None
 match(byte):
@@ -58,12 +115,7 @@ obj = bcp_obj(values,bit_hash,type_arr)
 obj.print()
 out = obj.arr()
 
-obj.print_values()
-
-#print(type(obj.obj.obj))
-#print(obj.obj.size)
-
-
+#obj.print_values()
         
 # CREATE SERVER AND MAKE IT DISCOVERABLE 
 set_bluetooth_discovery(True)
@@ -98,6 +150,8 @@ try:
     # first request will be the n of chunks
     client_sock.send(obj.obj.size.to_bytes(4,byteorder='big')) 
     #print(obj.obj.size)
+
+    #client_sock.sendall(view)    
     
     i=0
     while(i<obj.obj.size):
