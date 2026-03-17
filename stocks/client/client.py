@@ -68,7 +68,7 @@ def connect_to_device(name):
         sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
         sock.connect((mac_address, 1)) # Port 1 is the RFCOMM default
         
-
+        
         snp500 = np.char.decode(rec(sock), encoding='ascii').astype(str)
         
         
