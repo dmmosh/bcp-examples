@@ -2,3 +2,4 @@ __pycache__
 stocks/__pycache__
 stocks/.buildozer
 venv
+c_performance/bcp
