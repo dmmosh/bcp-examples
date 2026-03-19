@@ -293,8 +293,10 @@ int main(int argc, char* argv[]){
     }
     char *end_argv;
     normalDist = (argc == 4 && !strcmp(argv[3], "1"));
-    n = strtoull(argv[1], &end_argv, 10); // number of elements 
-    uint64_t i_iter  = strtoull(argv[2], &end_argv, 10); // number of elements 
+    n = strtoull(argv[1], &end_argv, 10); // number of elements per array
+    uint64_t i_iter  = strtoull(argv[2], &end_argv, 10); // number of repetitions of thee 4 arrays
+
+
 
 
     srand(time(NULL));
@@ -315,10 +317,10 @@ int main(int argc, char* argv[]){
 
 
     // compress objects
-    bcp_obj obj8;
-    bcp_obj obj16; 
-    bcp_obj obj32;
-    bcp_obj obj64;
+    bcp_obj_bytes obj8;
+    bcp_obj_bytes obj16; 
+    bcp_obj_bytes obj32;
+    bcp_obj_bytes obj64;
 
     // decompress arrays 
      uint8_t* arr8_decomp = NULL;
@@ -330,131 +332,108 @@ int main(int argc, char* argv[]){
     double compress_time[] = {0,0,0,0}; // 8 , 16, 32, and 64 bits
     double decompress_time[] = {0,0,0,0}; // 8 , 16, 32, and 64 bits
     double compress_maxes[] = {0,0,0,0};
+    double compress_ratio[] = {0,0,0,0};
+    double space_savings[] = {0,0,0,0};
     double decompress_maxes[] = {0,0,0,0};
     double decompress_mins[] = {DBL_MAX,DBL_MAX,DBL_MAX,DBL_MAX};
     double compress_mins[] = {DBL_MAX,DBL_MAX,DBL_MAX,DBL_MAX};
     
     assign_tests(no_corr); // reassigns all tests
     
+    void* arr[] = {
+        (void*)arr8,
+        (void*)arr16,
+        (void*)arr32,
+        (void*)arr64,
+    };
 
+    uint64_t* arr_bit_hashes[] = {
+        arr8_bit_hash,
+        arr16_bit_hash,
+        arr32_bit_hash,
+        arr64_bit_hash
+    };
+
+    size_t sizes[] = {
+        (size_t)sizeof(uint8_t),
+        (size_t)sizeof(uint16_t),
+        (size_t)sizeof(uint32_t),
+        (size_t)sizeof(uint64_t)
+    };
+    
     // WARMUP 
-    for(uint64_t i=0; i<5; i++){
-        
-        obj32 = bcp_compress(arr32,arr32_bit_hash, n, sizeof(uint32_t));
-        arr32_decomp = bcp_arr(obj32,sizeof(uint32_t));
-        free_arr(arr32_decomp);
-        free_bcp(obj32);
-        arr32_decomp = NULL;
+    for(uint64_t i=0; i<4; i++){
+        bcp_obj_bytes obj_buffer;
+        void* arr_buffer;
+        obj_buffer = bcp_compress_bytes(arr[i],arr_bit_hashes[i], n, (size_t)sizes[i]);
+
+        arr_buffer = bcp_arr(obj_buffer.obj,(size_t)sizes[i]);
+        DO_NOT_OPTIMIZE(obj_buffer);
+        DO_NOT_OPTIMIZE(arr_buffer);
+        free_arr(arr_buffer);
+        free_bcp_bytes(obj_buffer);
+        arr_buffer = NULL;
     }
     
     
-        // MEASUREMENT
+
+
+    // MEASUREMENT
     for (uint64_t i = 0; i < i_iter; i++)
     {
         
+        for(uint64_t j = 0; j<4; j++){
+            // 8 bit benchmarking 
+            bcp_obj_bytes obj_buffer;
+            void* arr_buffer;
+            clock_gettime(CLOCK_MONOTONIC, &start);
+            obj_buffer = bcp_compress_bytes(arr[j],arr_bit_hashes[j], n, sizes[j]);  // compression
+            clock_gettime(CLOCK_MONOTONIC, &end);
+            compress_time[j] += S_END;
+            compress_ratio[j] += sizes[j] * n / (double)obj_buffer.size;
+            space_savings[j] += (1 - 1/compress_ratio[j] )*100;
 
-        // 8 bit benchmarking 
-        clock_gettime(CLOCK_MONOTONIC, &start);
-        obj8 = bcp_compress(arr8,arr8_bit_hash, n, sizeof(uint8_t));  // compression
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        compress_time[0] += S_END;
-        clock_gettime(CLOCK_MONOTONIC, &start);
-        arr8_decomp = bcp_arr(obj8,sizeof(uint8_t)); // decompression
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        decompress_time[0] += S_END;
-        
-        compress_maxes[0] = max(compress_maxes[0],S_END);
-        compress_mins[0] = min(compress_mins[0], S_END);
-        decompress_maxes[0] = max(decompress_maxes[0],S_END);
-        decompress_mins[0] = min(decompress_mins[0], S_END);
-        DO_NOT_OPTIMIZE(obj8);
-        DO_NOT_OPTIMIZE(arr8_decomp);
-        //DO_NOT_OPTIMIZE(arr8);
-        free_arr(arr8_decomp);
-        free_bcp(obj8);
-        arr8_decomp = NULL;
-        
+            clock_gettime(CLOCK_MONOTONIC, &start);
+            arr_buffer = bcp_arr(obj_buffer.obj,sizes[j]); // decompression
+            clock_gettime(CLOCK_MONOTONIC, &end);
+            decompress_time[j] += S_END;
 
+            compress_maxes[j] = max(compress_maxes[j],S_END);
+            compress_mins[j] = min(compress_mins[j], S_END);
+            decompress_maxes[j] = max(decompress_maxes[j],S_END);
+            decompress_mins[j] = min(decompress_mins[j], S_END);
 
-        // 16 bit benchmarking 
-        clock_gettime(CLOCK_MONOTONIC, &start);
-        obj16 = bcp_compress(arr16,arr16_bit_hash, n, sizeof(uint16_t)); // compression
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        compress_time[1] += S_END;
-        
-        clock_gettime(CLOCK_MONOTONIC, &start);
-        arr16_decomp = bcp_arr(obj16,sizeof(uint16_t)); // decompression
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        decompress_time[1] += S_END;
-        
-        compress_maxes[1] = max(compress_maxes[1],S_END);
-        compress_mins[1] = min(compress_mins[1], S_END);
-        decompress_maxes[1] = max(decompress_maxes[1],S_END);
-        decompress_mins[1] = min(decompress_mins[1], S_END);
-        DO_NOT_OPTIMIZE(obj16);
-        DO_NOT_OPTIMIZE(arr16_decomp);
-        free_arr(arr16_decomp);
-        free_bcp(obj16);
-        arr16_decomp = NULL;
-        
+            DO_NOT_OPTIMIZE(obj_buffer);
+            DO_NOT_OPTIMIZE(arr_buffer);
+            free_arr(arr_buffer);
+            free_bcp_bytes(obj_buffer);
+            arr_buffer = NULL;
 
+        }
 
-        // 32 bit benchmarking 
-        clock_gettime(CLOCK_MONOTONIC, &start);
-        obj32 = bcp_compress(arr32,arr32_bit_hash, n, sizeof(uint32_t)); // compression
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        compress_time[2] += S_END;
-        
-        clock_gettime(CLOCK_MONOTONIC, &start);
-        arr32_decomp = bcp_arr(obj32,sizeof(uint32_t)); // decompression
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        decompress_time[2] += S_END;
-        
-        compress_maxes[2] = max(compress_maxes[2],S_END);
-        compress_mins[2] = min(compress_mins[2], S_END);
-        decompress_maxes[2] = max(decompress_maxes[2],S_END);
-        decompress_mins[2] = min(decompress_mins[2], S_END);
-        DO_NOT_OPTIMIZE(obj32);
-        DO_NOT_OPTIMIZE(arr32_decomp);
-        free_arr(arr32_decomp);
-        free_bcp(obj32);
-        arr32_decomp = NULL;
-        
-
-
-
-        // 64 bit benchmarking 
-        clock_gettime(CLOCK_MONOTONIC, &start);
-        obj64 = bcp_compress(arr64,arr64_bit_hash, n, sizeof(uint64_t)); // compression
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        compress_time[3] += S_END;
-        
-        clock_gettime(CLOCK_MONOTONIC, &start);
-        arr64_decomp = bcp_arr(obj64,sizeof(uint64_t)); // decompression
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        decompress_time[3] += S_END;
-        
-        compress_maxes[3] = max(compress_maxes[3],S_END);
-        compress_mins[3] = min(compress_mins[3], S_END);
-        decompress_maxes[3] = max(decompress_maxes[3],S_END);
-        decompress_mins[3] = min(decompress_mins[3], S_END);
-        DO_NOT_OPTIMIZE(obj64);
-        DO_NOT_OPTIMIZE(arr64_decomp);
-        free_arr(arr64_decomp);
-        free_bcp(obj64);
-        arr64_decomp = NULL;
-         
     }
 
     // gets thee compression and decompression times
 
     
 
-
+    printf("%"PRIu64" repetitions",i_iter);
+    if(i_iter>2){
+        printf("\t(-2 elements, max and min outliers dropped)");
+    };
+    printf("\n");
     for(int i = 0; i<4; i++){
-        compress_time[i] -= compress_maxes[i];
-        compress_time[i] -= compress_mins[i];
-         compress_time[i] /= (i_iter-2);
+        if(i_iter>2){
+            compress_time[i] -= compress_maxes[i];
+            compress_time[i] -= compress_mins[i];
+            decompress_time[i] -= decompress_maxes[i];
+            decompress_time[i] -= decompress_mins[i];
+            compress_time[i] /= (i_iter-2);
+        } else {
+            compress_time[i] /= (i_iter);
+            decompress_time[i] /= (i_iter);
+
+        }
         double bytes = pow(2,i);
         double mb = (bytes*n) / (1024.0 * 1024.0); // mb
         double avg_comp_mbps = (mb) / compress_time[i];
@@ -462,9 +441,6 @@ int main(int argc, char* argv[]){
 
     }
     for(int i = 0; i<4; i++){
-        decompress_time[i] -= decompress_maxes[i];
-        decompress_time[i] -= decompress_mins[i];
-         decompress_time[i] /= (i_iter-2);
         double bytes = pow(2,i);
         double mb = (bytes*n) / (1024.0 * 1024.0);
         double avg_comp_mbps = (mb) / decompress_time[i];
